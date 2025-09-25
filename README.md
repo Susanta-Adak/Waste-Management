@@ -1,1 +1,1 @@
-# StudySound
+# Waste Management
