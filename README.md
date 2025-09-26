@@ -1,3 +1,3 @@
 # Waste Management
 
-![plot](high-level-design.png)
+![plot](docs/architecture/high-level-design.png)
