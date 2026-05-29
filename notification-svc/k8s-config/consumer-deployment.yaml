@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-consumer
+  namespace: notification-svc
+  labels:
+    app: notification-consumer
+spec:
+  replicas: 1        # must stay 1 — kafka-python assigns all partitions to one consumer per group
+  selector:
+    matchLabels:
+      app: notification-consumer
+  template:
+    metadata:
+      labels:
+        app: notification-consumer
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z postgres-service 5432; do
+                echo "Waiting for PostgreSQL..."; sleep 2;
+              done
+        - name: wait-for-kafka
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z $(echo $KAFKA_BOOTSTRAP_SERVERS | cut -d: -f1) $(echo $KAFKA_BOOTSTRAP_SERVERS | cut -d: -f2); do
+                echo "Waiting for Kafka..."; sleep 3;
+              done
+          envFrom:
+            - configMapRef:
+                name: notification-svc-config
+      containers:
+        - name: notification-consumer
+          image: notification-svc:latest
+          imagePullPolicy: IfNotPresent
+          command: ["python", "manage.py", "consume_events"]
+          envFrom:
+            - configMapRef:
+                name: notification-svc-config
+          env:
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: notification-svc-secrets
+                  key: secret-key
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: notification-svc-secrets
+                  key: db-password
+            - name: EMAIL_HOST_USER
+              valueFrom:
+                secretKeyRef:
+                  name: notification-svc-secrets
+                  key: email-host-user
+            - name: EMAIL_HOST_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: notification-svc-secrets
+                  key: email-host-password
+            - name: TWILIO_ACCOUNT_SID
+              valueFrom:
+                secretKeyRef:
+                  name: notification-svc-secrets
+                  key: twilio-account-sid
+            - name: TWILIO_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: notification-svc-secrets
+                  key: twilio-auth-token
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "300m"
+              memory: "256Mi"

@@ -12,9 +12,10 @@ data:
   DB_HOST: "postgres-service"
   DB_PORT: "5432"
   DB_CONN_MAX_AGE: "60"
-  # Kafka
+  # Kafka — use the full cluster DNS name so it resolves from any namespace.
+  # Format: <service>.<namespace>.svc.cluster.local:<port>
   KAFKA_ENABLED: "True"
-  KAFKA_BOOTSTRAP_SERVERS: "kafka-service:9092"
+  KAFKA_BOOTSTRAP_SERVERS: "kafka-service.kafka.svc.cluster.local:9092"
   KAFKA_CONSUMER_GROUP: "notification-svc"
   KAFKA_TOPICS: "waste-events,bin-events,payment-events"
   DEFAULT_FROM_EMAIL: "noreply@waste-management.io"
