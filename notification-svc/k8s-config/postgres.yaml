@@ -53,6 +53,13 @@ spec:
                 secretKeyRef:
                   name: notification-svc-secrets
                   key: db-password
+            # Force md5 so PgBouncer can authenticate.
+            # PostgreSQL 14+ defaults to scram-sha-256 which PgBouncer
+            # requires extra config to support.
+            - name: POSTGRES_HOST_AUTH_METHOD
+              value: "md5"
+            - name: POSTGRES_INITDB_ARGS
+              value: "--auth-host=md5 --auth-local=trust"
           volumeMounts:
             - name: postgres-data
               mountPath: /var/lib/postgresql/data

@@ -4,14 +4,14 @@ metadata:
   name: notification-migrate
   namespace: notification-svc
   annotations:
-    # Run BEFORE the application pods are updated, and clean up the previous
-    # job run so ArgoCD can re-create it on every deploy.
-    argocd.argoproj.io/hook: PreSync
+    # Sync hook — runs during the sync AFTER wave-1 (postgres) is healthy.
+    # BeforeHookCreation deletes the previous Job so it re-runs on every deploy.
+    argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
     argocd.argoproj.io/sync-wave: "2"
 spec:
   backoffLimit: 3
-  activeDeadlineSeconds: 180
+  activeDeadlineSeconds: 300
   ttlSecondsAfterFinished: 300
   template:
     spec:
