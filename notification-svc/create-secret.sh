@@ -64,13 +64,15 @@ _load_env "${ENV_FILE}"
 
 # ── apply defaults for local dev if vars are empty ───────────────────────────
 SECRET_KEY="${SECRET_KEY:-$(python3 -c 'import secrets; print(secrets.token_urlsafe(50))' 2>/dev/null || echo "change-me-$(date +%s)")}"
+DB_PASSWORD="${DB_PASSWORD:-postgres}"
 EMAIL_HOST_USER="${EMAIL_HOST_USER:-}"
 EMAIL_HOST_PASSWORD="${EMAIL_HOST_PASSWORD:-}"
 TWILIO_ACCOUNT_SID="${TWILIO_ACCOUNT_SID:-}"
 TWILIO_AUTH_TOKEN="${TWILIO_AUTH_TOKEN:-}"
 
-info "SECRET_KEY       : ${SECRET_KEY:0:8}…(redacted)"
-info "EMAIL_HOST_USER  : ${EMAIL_HOST_USER:-<empty>}"
+info "SECRET_KEY        : ${SECRET_KEY:0:8}…(redacted)"
+info "DB_PASSWORD       : ${DB_PASSWORD:0:3}…(redacted)"
+info "EMAIL_HOST_USER   : ${EMAIL_HOST_USER:-<empty>}"
 info "TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-<empty>}"
 
 # ── ensure namespace exists ──────────────────────────────────────────────────
@@ -88,6 +90,7 @@ SECRET_FILE="${SCRIPT_DIR}/k8s-config/secret.yaml"
 kubectl create secret generic "${SECRET_NAME}" \
   --namespace "${NAMESPACE}" \
   --from-literal=secret-key="${SECRET_KEY}" \
+  --from-literal=db-password="${DB_PASSWORD}" \
   --from-literal=email-host-user="${EMAIL_HOST_USER}" \
   --from-literal=email-host-password="${EMAIL_HOST_PASSWORD}" \
   --from-literal=twilio-account-sid="${TWILIO_ACCOUNT_SID}" \
@@ -108,7 +111,7 @@ step "Verifying secret keys"
 KEYS=$(kubectl get secret "${SECRET_NAME}" -n "${NAMESPACE}" \
   -o jsonpath='{.data}' | tr ',' '\n' | grep -o '"[^"]*":' | tr -d '"' | tr -d ':')
 
-for key in secret-key email-host-user email-host-password twilio-account-sid twilio-auth-token; do
+for key in secret-key db-password email-host-user email-host-password twilio-account-sid twilio-auth-token; do
   if echo "${KEYS}" | grep -q "^${key}$"; then
     log "  ${key}"
   else

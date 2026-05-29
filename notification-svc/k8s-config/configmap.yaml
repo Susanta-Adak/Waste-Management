@@ -6,6 +6,13 @@ metadata:
 data:
   DEBUG: "False"
   ALLOWED_HOSTS: "*"
+  # PostgreSQL (non-sensitive)
+  DB_NAME: "notification_db"
+  DB_USER: "postgres"
+  DB_HOST: "postgres-service"
+  DB_PORT: "5432"
+  DB_CONN_MAX_AGE: "60"
+  # Kafka
   KAFKA_ENABLED: "True"
   KAFKA_BOOTSTRAP_SERVERS: "kafka-service:9092"
   KAFKA_CONSUMER_GROUP: "notification-svc"
