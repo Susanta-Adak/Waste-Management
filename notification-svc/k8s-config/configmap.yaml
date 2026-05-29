@@ -6,12 +6,13 @@ metadata:
 data:
   DEBUG: "False"
   ALLOWED_HOSTS: "*"
-  # PostgreSQL (non-sensitive)
+  # PostgreSQL — app connects via PgBouncer (not directly to postgres-service)
   DB_NAME: "notification_db"
   DB_USER: "postgres"
-  DB_HOST: "postgres-service"
+  DB_HOST: "pgbouncer-service"
   DB_PORT: "5432"
-  DB_CONN_MAX_AGE: "60"
+  # CONN_MAX_AGE must be 0 in transaction pooling mode — PgBouncer owns the pool
+  DB_CONN_MAX_AGE: "0"
   # Kafka — use the full cluster DNS name so it resolves from any namespace.
   # Format: <service>.<namespace>.svc.cluster.local:<port>
   KAFKA_ENABLED: "True"

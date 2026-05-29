@@ -1,0 +1,164 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgbouncer-config
+  namespace: notification-svc
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+data:
+  pgbouncer.ini: |
+    [databases]
+    ; Route the app database to the PostgreSQL StatefulSet
+    notification_db = host=postgres-service port=5432 dbname=notification_db
+
+    [pgbouncer]
+    listen_addr           = 0.0.0.0
+    listen_port           = 5432
+    auth_type             = md5
+    auth_file             = /etc/pgbouncer/userlist.txt
+
+    ; transaction pooling — best for Django/gunicorn (each request
+    ; borrows a connection only for the duration of its transaction)
+    pool_mode             = transaction
+
+    max_client_conn       = 200   ; max simultaneous app connections
+    default_pool_size     = 20    ; server-side connections kept open per db/user
+    min_pool_size         = 5
+    reserve_pool_size     = 5
+    reserve_pool_timeout  = 3
+
+    ; health / housekeeping
+    server_reset_query    = DISCARD ALL
+    server_check_delay    = 30
+    server_idle_timeout   = 600
+    client_idle_timeout   = 300
+
+    ; logging (reduce noise in production)
+    log_connections       = 0
+    log_disconnections    = 0
+    log_pooler_errors     = 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgbouncer
+  namespace: notification-svc
+  labels:
+    app: pgbouncer
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pgbouncer
+  template:
+    metadata:
+      labels:
+        app: pgbouncer
+    spec:
+      initContainers:
+        # Generates /etc/pgbouncer/userlist.txt from the DB secret at pod start.
+        # PgBouncer expects: "username" "md5<md5(password+username)>"
+        - name: generate-userlist
+          image: python:3.11-alpine
+          command:
+            - sh
+            - -c
+            - |
+              python3 -c "
+              import hashlib, os
+              user = os.environ['DB_USER']
+              pwd  = os.environ['DB_PASSWORD']
+              h    = hashlib.md5(f'{pwd}{user}'.encode()).hexdigest()
+              line = f'\"{user}\" \"md5{h}\"'
+              print(line)
+              open('/pgbouncer-auth/userlist.txt', 'w').write(line + '\n')
+              "
+              echo "userlist.txt written."
+          env:
+            - name: DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: notification-svc-config
+                  key: DB_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: notification-svc-secrets
+                  key: db-password
+          volumeMounts:
+            - name: pgbouncer-auth
+              mountPath: /pgbouncer-auth
+
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z postgres-service 5432; do
+                echo "Waiting for PostgreSQL..."; sleep 2;
+              done
+              echo "PostgreSQL ready."
+
+      containers:
+        - name: pgbouncer
+          image: edoburu/pgbouncer:1.22.1
+          ports:
+            - containerPort: 5432
+          env:
+            - name: DATABASE_URL
+              value: "postgres://$(DB_USER):$(DB_PASSWORD)@postgres-service:5432/notification_db"
+          volumeMounts:
+            - name: pgbouncer-config
+              mountPath: /etc/pgbouncer/pgbouncer.ini
+              subPath: pgbouncer.ini
+            - name: pgbouncer-auth
+              mountPath: /etc/pgbouncer/userlist.txt
+              subPath: userlist.txt
+          readinessProbe:
+            tcpSocket:
+              port: 5432
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 5432
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+
+      volumes:
+        - name: pgbouncer-config
+          configMap:
+            name: pgbouncer-config
+            items:
+              - key: pgbouncer.ini
+                path: pgbouncer.ini
+        - name: pgbouncer-auth
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgbouncer-service
+  namespace: notification-svc
+  labels:
+    app: pgbouncer
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  selector:
+    app: pgbouncer
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432
+  type: ClusterIP

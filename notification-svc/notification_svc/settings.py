@@ -60,10 +60,20 @@ DATABASES = {
         'PASSWORD': env('DB_PASSWORD', default=''),
         'HOST': env('DB_HOST', default='localhost'),
         'PORT': env('DB_PORT', default='5432'),
-        'CONN_MAX_AGE': env.int('DB_CONN_MAX_AGE', default=60),
+        # Must be 0 when using PgBouncer in transaction pooling mode.
+        # PgBouncer manages the server-side pool; Django must not hold
+        # connections open between requests.
+        'CONN_MAX_AGE': env.int('DB_CONN_MAX_AGE', default=0),
+        # Verify the connection is alive before each request (Django 4.1+).
+        # Works correctly with CONN_MAX_AGE=0.
+        'CONN_HEALTH_CHECKS': True,
         'OPTIONS': {
             'connect_timeout': 10,
+            'application_name': 'notification-svc',
         },
+        # Server-side cursors (QuerySet.iterator()) do not work in
+        # PgBouncer transaction pooling mode — disable them globally.
+        'DISABLE_SERVER_SIDE_CURSORS': True,
     }
 }
 

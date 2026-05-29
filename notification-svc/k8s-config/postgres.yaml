@@ -3,6 +3,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: postgres-pvc
   namespace: notification-svc
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   accessModes:
     - ReadWriteOnce
@@ -17,6 +19,8 @@ metadata:
   namespace: notification-svc
   labels:
     app: postgres
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   serviceName: postgres-service
   replicas: 1
@@ -81,6 +85,8 @@ metadata:
   namespace: notification-svc
   labels:
     app: postgres
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   selector:
     app: postgres
