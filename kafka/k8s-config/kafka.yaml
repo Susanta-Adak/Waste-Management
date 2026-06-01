@@ -113,7 +113,7 @@ spec:
           readinessProbe:
             exec:
               command:
-                - kafka-topics.sh
+                - /opt/kafka/bin/kafka-topics.sh
                 - --bootstrap-server
                 - localhost:9092
                 - --list
@@ -124,7 +124,7 @@ spec:
           livenessProbe:
             exec:
               command:
-                - kafka-topics.sh
+                - /opt/kafka/bin/kafka-topics.sh
                 - --bootstrap-server
                 - localhost:9092
                 - --list

@@ -39,7 +39,7 @@ spec:
               BOOTSTRAP="kafka-service.kafka.svc.cluster.local:9092"
 
               create_topic() {
-                kafka-topics.sh --bootstrap-server $BOOTSTRAP \
+                /opt/kafka/bin/kafka-topics.sh --bootstrap-server $BOOTSTRAP \
                   --create --if-not-exists \
                   --topic "$1" \
                   --partitions 3 \
@@ -52,7 +52,7 @@ spec:
               create_topic payment-events
 
               echo "All topics created."
-              kafka-topics.sh --bootstrap-server $BOOTSTRAP --list
+              /opt/kafka/bin/kafka-topics.sh --bootstrap-server $BOOTSTRAP --list
           resources:
             requests:
               cpu: "100m"
