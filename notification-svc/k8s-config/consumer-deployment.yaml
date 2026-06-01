@@ -27,18 +27,9 @@ spec:
               until nc -z pgbouncer-service 5432; do
                 echo "Waiting for PgBouncer..."; sleep 2;
               done
-        - name: wait-for-kafka
-          image: busybox:1.36
-          command:
-            - sh
-            - -c
-            - |
-              until nc -z $(echo $KAFKA_BOOTSTRAP_SERVERS | cut -d: -f1) $(echo $KAFKA_BOOTSTRAP_SERVERS | cut -d: -f2); do
-                echo "Waiting for Kafka..."; sleep 3;
-              done
-          envFrom:
-            - configMapRef:
-                name: notification-svc-config
+        # wait-for-kafka removed — KafkaEventConsumer has built-in exponential
+        # backoff retry (2 s → 60 s) so it recovers automatically if Kafka
+        # is not yet available when the pod starts.
       containers:
         - name: notification-consumer
           image: notification-svc:latest
