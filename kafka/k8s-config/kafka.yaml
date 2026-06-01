@@ -31,20 +31,6 @@ data:
   # Stable KRaft cluster ID (base64url-encoded UUID, fixed so restarts are safe)
   CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
 ---
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: kafka-pvc
-  namespace: kafka
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 2Gi
----
 # Headless service — required by KRaft so pods can address each other by DNS
 apiVersion: v1
 kind: Service
@@ -153,7 +139,15 @@ spec:
             limits:
               cpu: "1000m"
               memory: "1Gi"
-      volumes:
-        - name: kafka-data
-          persistentVolumeClaim:
-            claimName: kafka-pvc
+  # volumeClaimTemplates — StatefulSet creates and binds the PVC automatically
+  # when the Pod is scheduled, avoiding the WaitForFirstConsumer deadlock with
+  # ArgoCD sync-waves.
+  volumeClaimTemplates:
+    - metadata:
+        name: kafka-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 2Gi
