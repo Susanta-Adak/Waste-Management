@@ -54,6 +54,13 @@ spec:
                 secretKeyRef:
                   name: notification-svc-secrets
                   key: db-password
+            # Override configmap's DB_HOST (pgbouncer-service) — migrations
+            # hold long-running transactions that are incompatible with
+            # PgBouncer transaction pooling, so connect directly to postgres.
+            - name: DB_HOST
+              value: "postgres-service"
+            - name: DB_CONN_MAX_AGE
+              value: "0"
           resources:
             requests:
               cpu: "100m"
